@@ -25,31 +25,32 @@ plot_create <- function(genes, matrix, item){
   
   frequency_plot <-
     ggplot(plot_data, aes(x=value)) + 
-    geom_histogram(binwidth=1, fill="blue", color="black") + 
+    geom_histogram(binwidth=1, fill="#9400D3", color="#778899") + 
     ggtitle("Histogram of Values") + 
     xlab("Value") + 
     ylab("Frequency")
   
   continuous_plot <-
     ggplot(plot_data, aes(x=age, y=value)) +
-    geom_point(aes(color=age), alpha=0.5) + 
-    ggtitle("Scatterplot of AAGAB gene vs. Age") +
+    geom_point(aes(color=age)) + 
+    scale_color_gradient(low="#1E3D59", high="#F5C518") +
+    ggtitle(paste("Scatterplot of ", item, " gene vs. Age")) +
     xlab("age") +
     ylab("Value") +
     theme_minimal()
   
   categorical_plot1 <-
-    ggplot(plot_data, aes(x = icu_status, y = value)) +
-    geom_boxplot() +
-    ggtitle("Gene Value by ICU Status") +
+    ggplot(plot_data, aes(x = icu_status, y = value, fill = icu_status)) +
+    geom_boxplot(notch = TRUE) +
+    ggtitle(paste("Gene Value of ", item ," by ICU Status")) +
     xlab("ICU Status") +
     ylab("Value") +
     theme_minimal()
   
   categorical_plot2 <-
-    ggplot(plot_data, aes(x = mechanical_ventilation, y = value)) +
-    geom_boxplot() +
-    ggtitle("Gene Value by mechanical_ventilation") +
+    ggplot(plot_data, aes(x = mechanical_ventilation, y = value, fill = mechanical_ventilation)) +
+    geom_boxplot(notch = TRUE) +
+    ggtitle(paste("Gene Value of ", item," by mechanical_ventilation") )+
     xlab("mechanical_ventilation") +
     ylab("Gene Value") +
     theme_minimal()
