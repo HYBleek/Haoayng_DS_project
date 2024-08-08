@@ -17,7 +17,7 @@ plot_create <- function(genes, matrix, item){
     filter(X==item) %>%
     gather(key = "participant_id")
   genes_long <- genes_long[-1,]
-  matrix_selected <- matrix %>% select("participant_id", "age", "icu_status", "mechanical_ventilation")
+  matrix_selected <- matrix %>% select("participant_id", "age", "icu_status", "sex")
 
   plot_data <- merge(matrix_selected, genes_long, by = "participant_id")
   plot_data$value <- as.numeric(as.character(plot_data$value))
@@ -25,8 +25,8 @@ plot_create <- function(genes, matrix, item){
   
   frequency_plot <-
     ggplot(plot_data, aes(x=value)) + 
-    geom_histogram(binwidth=1, fill="#9400D3", color="#778899") + 
-    ggtitle("Histogram of Values") + 
+    geom_histogram(binwidth=1, fill="#c8a2c8", color="#d9d9d9") + 
+    ggtitle(paste("Histogram of Values of ", item)) + 
     xlab("Value") + 
     ylab("Frequency")
   
@@ -39,37 +39,26 @@ plot_create <- function(genes, matrix, item){
     ylab("Value") +
     theme_minimal()
   
-  categorical_plot1 <-
-    ggplot(plot_data, aes(x = icu_status, y = value, fill = icu_status)) +
+  categorical_plot <-
+    ggplot(plot_data, aes(x = icu_status, y = value, fill = sex)) +
     geom_boxplot(notch = TRUE) +
-    ggtitle(paste("Gene Value of ", item ," by ICU Status")) +
-    xlab("ICU Status") +
-    ylab("Value") +
-    theme_minimal()
-  
-  categorical_plot2 <-
-    ggplot(plot_data, aes(x = mechanical_ventilation, y = value, fill = mechanical_ventilation)) +
-    geom_boxplot(notch = TRUE) +
-    ggtitle(paste("Gene Value of ", item," by mechanical_ventilation") )+
-    xlab("mechanical_ventilation") +
+    ggtitle(paste("Gene Value of ", item," by icu status and sex") )+
+    xlab("icu status") +
     ylab("Gene Value") +
     theme_minimal()
   
-  return (list(frequency_plot, continuous_plot, categorical_plot1, categorical_plot2))
+  return (list(frequency_plot, continuous_plot, categorical_plot))
 }
 ```
 
 ```{r}
-plots = plot_create(genes, matrix, "AAGAB")
-plots[]
+lst = list("AAGAB", "AACS", "ABI1")
+for (gene in lst){
+  plots = plot_create(genes, matrix, gene)
+  print(plots)
+}
+
 ```
 
-```{r}
-plots = plot_create(genes, matrix, "AACS")
-plots[]
-```
 
-```{r}
-plots = plot_create(genes, matrix, "ABI1")
-plots[]
-```
+
