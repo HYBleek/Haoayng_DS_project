@@ -1,0 +1,74 @@
+---
+title: "Submit2"
+output: pdf_document
+date: "2024-08-08"
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+genes <- read.csv("QBS103_GSE157103_genes.csv")
+matrix <- read.csv("QBS103_GSE157103_series_matrix.csv")
+```
+
+```{r}
+plot_create <- function(genes, matrix, item){
+  genes_long <- genes %>%
+    filter(X==item) %>%
+    gather(key = "participant_id")
+  genes_long <- genes_long[-1,]
+  matrix_selected <- matrix %>% select("participant_id", "age", "icu_status", "mechanical_ventilation")
+
+  plot_data <- merge(matrix_selected, genes_long, by = "participant_id")
+  plot_data$value <- as.numeric(as.character(plot_data$value))
+  plot_data$age <- as.numeric(as.character(plot_data$age))
+  
+  frequency_plot <-
+    ggplot(plot_data, aes(x=value)) + 
+    geom_histogram(binwidth=1, fill="blue", color="black") + 
+    ggtitle("Histogram of Values") + 
+    xlab("Value") + 
+    ylab("Frequency")
+  
+  continuous_plot <-
+    ggplot(plot_data, aes(x=age, y=value)) +
+    geom_point(aes(color=age), alpha=0.5) + 
+    ggtitle("Scatterplot of AAGAB gene vs. Age") +
+    xlab("age") +
+    ylab("Value") +
+    theme_minimal()
+  
+  categorical_plot1 <-
+    ggplot(plot_data, aes(x = icu_status, y = value)) +
+    geom_boxplot() +
+    ggtitle("Gene Value by ICU Status") +
+    xlab("ICU Status") +
+    ylab("Value") +
+    theme_minimal()
+  
+  categorical_plot2 <-
+    ggplot(plot_data, aes(x = mechanical_ventilation, y = value)) +
+    geom_boxplot() +
+    ggtitle("Gene Value by mechanical_ventilation") +
+    xlab("mechanical_ventilation") +
+    ylab("Gene Value") +
+    theme_minimal()
+  
+  return (list(frequency_plot, continuous_plot, categorical_plot1, categorical_plot2))
+}
+```
+
+```{r}
+plots = plot_create(genes, matrix, "AAGAB")
+plots[]
+```
+
+```{r}
+plots = plot_create(genes, matrix, "AACS")
+plots[]
+```
+
+```{r}
+plots = plot_create(genes, matrix, "ABI1")
+plots[]
+```
