@@ -13,7 +13,7 @@ matrix <- matrix %>% rename('procalcitonin.ng.ml.' = 'procalcitonin.ng.ml..')
 ```
 Generate a table formatted in LaTeX of summary statistics for all the covariates you looked at and 2 additional continuous (3 total) and 1 additional categorical variable (3 total). (5 pts)
 ```{r}
-### Define the item we need to control
+### Define the item we need to use and the function data type
 selected_item <- c("age", "ferritin.ng.ml.", "procalcitonin.ng.ml.", "sex", "disease_status" , "icu_status" )
 numeric_item <- c("age", "ferritin.ng.ml.", "procalcitonin.ng.ml.")
 category_item <- c("sex", "disease_status" , "icu_status")
@@ -29,7 +29,9 @@ table_generate <- function(matrix, selected_item){
 }
 
 selected_table <- table_generate(matrix, selected_item)
+```
 
+```{r}
 summary_disease <- selected_table %>%
   group_by(sex, disease_status) %>%
   summarise(
@@ -181,6 +183,12 @@ pheatmap(gene_selected_data,
 ```
 
 ```{r}
-levels(annotation$sex)
+selected_table %>%
+  subset(sex!=' unknown')%>%
+  ggplot(aes(x = sex, fill = disease_status)) +
+  geom_bar() +
+  facet_grid(icu_status ~ .) +
+  labs(x = "Dimension1", fill = "Dimension2") +
+  theme_minimal()
 ```
 
