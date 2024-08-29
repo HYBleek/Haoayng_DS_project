@@ -9,7 +9,19 @@ library(tidyverse)
 library(ggplot2)
 genes <- read.csv("QBS103_GSE157103_genes.csv")
 matrix <- read.csv("QBS103_GSE157103_series_matrix.csv")
+
+id_genes <- colnames(genes)
+id_genes <- id_genes[-1]
+id_matrix <- matrix$participant_id
+diff1 <- setdiff(id_genes, id_matrix)
+diff2 <- setdiff(id_matrix, id_genes)
+colnames(genes)[colnames(genes) == diff1] <- diff2
 matrix <- matrix %>% rename('procalcitonin.ng.ml.' = 'procalcitonin.ng.ml..')
+
+unknown_id <- matrix$'participant_id'[matrix$sex == ' unknown']
+
+matrix <- matrix[!matrix$participant_id %in% unknown_id, ]
+genes[[unknown_id]] <- NULL
 ```
 Generate a table formatted in LaTeX of summary statistics for all the covariates you looked at and 2 additional continuous (3 total) and 1 additional categorical variable (3 total). (5 pts)
 ```{r}
@@ -23,82 +35,98 @@ table_generate <- function(matrix, selected_item){
   selected_item <- unlist(selected_item, numeric_item)
   selected_matrix <- matrix[,c('participant_id', selected_item)]
   for(item in numeric_item){
-  selected_matrix[[item]] = as.numeric(selected_matrix[[item]])    
+  selected_matrix[[item]] = as.numeric(as.character(selected_matrix[[item]]))    
   }
   return(selected_matrix)
 }
 
 selected_table <- table_generate(matrix, selected_item)
+
 ```
 
 ```{r}
+summary_sex <- selected_table %>%
+  group_by(sex) %>%
+  summarise(
+    count = n()
+  )
+
 summary_disease <- selected_table %>%
-  group_by(sex, disease_status) %>%
+  group_by(disease_status) %>%
   summarise(
     Count = n(),
-    Percentage = round(100 * n() / nrow(selected_table), 1),
-    .groups = 'drop'
+    Percentage = round(100 * n() / nrow(.), 1),
+  )
+
+summary_disease_male <- selected_table %>%
+  filter(sex == " male") %>% 
+  group_by(disease_status) %>%
+  summarise(
+    Count = n(),
+    Percentage = round(100 * n() / nrow(.), 1),
+    Total = nrow(.)
+  )
+
+summary_disease_female <- selected_table %>%
+  filter(sex == " female") %>%
+  group_by(disease_status) %>%
+  summarise(
+    Count = n(),
+    Percentage = round(100 * n() / nrow(.), 1),
+    Total = nrow(.)
   )
 
 summary_icu <- selected_table %>%
-  group_by(sex, icu_status) %>%
+  group_by(icu_status) %>%
   summarise(
     Count = n(),
-    Percentage = round(100 * n() / nrow(selected_table), 1),
-    .groups = 'drop'
+    Percentage = round(100 * n() / nrow(.), 1),
+  )
+
+summary_icu_male <- selected_table %>%
+  filter(sex == " male") %>%
+  group_by(icu_status) %>%
+  summarise(
+    Count = n(),
+    Percentage = round(100 * n() / nrow(.), 1),
+    Total = nrow(.)
+  )
+
+summary_icu_female <- selected_table %>%
+  filter(sex == " female") %>%
+  group_by(icu_status) %>%
+  summarise(
+    Count = n(),
+    Percentage = round(100 * n() / nrow(.), 1),
+    Total = nrow(.)
   )
 
 summary_table <- selected_table %>%
-  select(c(continous_item, 'sex'))%>%
-  group_by(sex)%>%
+  select(c(continous_item, 'sex')) %>%
+  group_by(sex) %>%
   summarise(
-    across(where(is.numeric), mean, na.rm = TRUE)
+    across(where(is.numeric), list(
+      mean = ~mean(.x, na.rm = TRUE),
+      sd = ~sd(.x, na.rm=TRUE),
+      max = ~max(.x, na.rm = TRUE),
+      min = ~min(.x, na.rm = TRUE),
+      median = ~median(.x, na.rm = TRUE)
+    ), .names = "{fn}_{col}")
   )
 
-```
-selected_table %>%
-  select(category_item)%>%
-  group_by(sex)%>%
+summary_table_all <- selected_table %>%
+  select(c(continous_item, 'sex')) %>%
   summarise(
-    occupation = n(),
-    occupation_percent = (occupation / nrow(selected_table)) * 100,
+    across(where(is.numeric), list(
+      mean = ~mean(.x, na.rm = TRUE),
+      sd = ~sd(.x, na.rm=TRUE),
+      max = ~max(.x, na.rm = TRUE),
+      min = ~min(.x, na.rm = TRUE),
+      median = ~median(.x, na.rm = TRUE)
+    ), .names = "{fn}_{col}")
   )
 
-selected_table %>%
-  select(c(continous_item, 'sex'))%>%
-  group_by(sex)%>%
-  summarise(
-    across(where(is.numeric), mean, na.rm = TRUE)
-  )
 
-```{r}
-library(table1)
-library(dplyr)
-# data preprocessing
-# dropped a few cases where age is "89>" and ":"
-matrix_filtered <- matrix %>%
-  mutate(age = as.numeric(age)) %>%  # Convert 'age' to numeric 
-  filter(!is.na(age) & age == as.integer(age))  # Filter to keep only integer ages 
-
-matrix_filtered <- matrix_filtered %>%
-  filter(sex != " unknown")
-
-matrix_filtered$sex <-
-  factor(matrix_filtered$sex, levels=c(' female',' male'),
-         labels = c('Female','Male'))
-matrix_filtered$mechanical_ventilation <-
-  factor(matrix_filtered$mechanical_ventilation, levels = c(' yes',' no'), labels = c("Present", "Absent"))
-label(matrix_filtered$sex)<- "Sex"
-label(matrix_filtered$mechanical_ventilation)       <- "Mechanincal Ventilation"
-label(matrix_filtered$age)       <- "Age"
-label(matrix_filtered$hospital.free_days_post_45_day_followup)       <- "45 Days Followup Post Hospital"
-label(matrix_filtered$ventilator.free_days)       <- "Ventilator Free Days"
-
-# Generate the table with customized text color
-table1(~ factor(mechanical_ventilation) + factor(sex) 
-       + age + hospital.free_days_post_45_day_followup + ventilator.free_days 
-      | disease_status, 
-       data = matrix_filtered)
 ```
 
 
@@ -115,7 +143,7 @@ plot_create <- function(genes, matrix, gene){
   
   frequency_plot <-
     ggplot(plot_data, aes(x=value)) + 
-    geom_histogram(binwidth=1, fill="#c8a2c8", color="#d9d9d9") + 
+    geom_histogram(binwidth=1, fill="#48a2c8", color="#19d9d9") + 
     ggtitle(paste("Histogram of Values of ", gene)) + 
     xlab("Value") + 
     ylab("Frequency")
@@ -123,7 +151,7 @@ plot_create <- function(genes, matrix, gene){
   continuous_plot <-
     ggplot(plot_data, aes(x=age, y=value)) +
     geom_point(aes(color=age)) + 
-    scale_color_gradient(low="#1E3D59", high="#F5C518") +
+    scale_color_gradient(low="#EE3D59", high="#F5C518") +
     ggtitle(paste("Scatterplot of ", gene, " gene vs. Age")) +
     xlab("age") +
     ylab("Value") +
@@ -135,7 +163,9 @@ plot_create <- function(genes, matrix, gene){
     ggtitle(paste("Gene Value of ", gene," by icu status and sex") )+
     xlab("icu status") +
     ylab("Gene Value") +
+    scale_fill_manual(values = c(" male" = "#1f77b4", " female" = "#ff69b4")) +
     theme_minimal()
+  
   
   return (list(frequency_plot, continuous_plot, categorical_plot))
 }
@@ -148,15 +178,14 @@ print(plots)
 ```
 
 ```{r}
-library(corrplot)
 library(pheatmap)
 
-gene_select = c("AAGAB", "AAMP", "AATF", "ABCA1", "ABCA2", "ABCA7", "ABCC5", "ABCB10", "ABCG1", "ABCE1", "ABCF1", "ABCF3", "ABHD10")
+gene_select = c("AAGAB", "AAMP", "AATF", "ABCA1", "ABCA2", "ABCA7", "ABCC5", "ABCG1", "ABCE1", "ABCF1", "ABCF3", "ABHD10")
 
 annotation <- data.frame(
   participant_id = factor(matrix$participant_id),
   sex = factor(matrix$sex),
-  status = factor(matrix$icu_status)
+  icu_status = factor(matrix$icu_status)
 )
 rownames(annotation) <- annotation[,1]
 annotation <- annotation[,-1]
@@ -168,27 +197,27 @@ rownames(gene_selected_data) <- gene_selected_data[,1]
 gene_selected_data <- gene_selected_data[,-1]
 
 annotation_color <- list(
-  status = c(' yes' = 'aquamarine4',
-             ' no' = 'deepskyblue4'),
   sex = c(' female' = '#ff69b4',
-          ' male' = '#1f77b4',
-          ' unknown'= '#6a0dad')
+          ' male' = '#1f77b4')
 )
 pheatmap(gene_selected_data,
          cluster_rows = T,
          cluster_cols = T,
          annotation_col = annotation,
          annotation_colors = annotation_color,
-         show_colnames = FALSE)
+         show_colnames = FALSE,
+         main = "Heatmap of Selected Genes",
+         legend_labels = "Gene Value")
 ```
 
 ```{r}
 selected_table %>%
-  subset(sex!=' unknown')%>%
   ggplot(aes(x = sex, fill = disease_status)) +
   geom_bar() +
   facet_grid(icu_status ~ .) +
-  labs(x = "Dimension1", fill = "Dimension2") +
+  geom_text(aes(label = ..count..), stat = "count", position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = c("disease state: COVID-19" = "#f69F00", "disease state: non-COVID-19" = "#5654E9")) +
+  labs(x = "sex", fill = "disease_status", title = "Occupation by ICU Status, Sex, and Disease Status") +
   theme_minimal()
 ```
 
